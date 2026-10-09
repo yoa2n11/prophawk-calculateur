@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Calculateur PropHawk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Mise en page : une colonne étroite façon ticket de pari ; en tête le TRJ (verdict), puis une carte par issue. */
+:root {
+  --bg: #eef1f0;
+  --surface: #ffffff;
+  --ink: #16201d;
+  --muted: #5d6b66;
+  --line: #d5dcd9;
+  --accent: #0f6b5c;
+  --good: #137a3a;
+  --good-bg: #e2f4e8;
+  --bad: #b3261e;
+  --bad-bg: #fbe7e5;
+  --display: "Barlow Semi Condensed", "Arial Narrow", sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #101614; --surface: #19211e; --ink: #e7eeeb; --muted: #94a39d; --line: #2c3833;
+    --accent: #4fc2a9; --good: #5fd38a; --good-bg: #16301f; --bad: #ff8a80; --bad-bg: #3a1c1a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101614; --surface: #19211e; --ink: #e7eeeb; --muted: #94a39d; --line: #2c3833;
+  --accent: #4fc2a9; --good: #5fd38a; --good-bg: #16301f; --bad: #ff8a80; --bad-bg: #3a1c1a;
+}
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--body); padding: 16px; }
+main { max-width: 460px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font: 700 1.35rem/1.15 var(--display); margin: 0; text-wrap: balance; }
+.meta { color: var(--muted); font-size: .95rem; display: grid; gap: 2px; }
+.example { font: 600 .72rem var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.verdict { border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+.verdict.ok { background: var(--good-bg); color: var(--good); }
+.verdict.ko { background: var(--bad-bg); color: var(--bad); }
+.verdict .label { font: 600 .8rem var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.verdict .trj { font: 600 2rem/1 var(--num); font-variant-numeric: tabular-nums; grid-row: span 2; }
+.verdict .state { font: 700 1.1rem var(--display); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+.card header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.side { font: 700 1.15rem var(--display); }
+.book { color: var(--muted); font-weight: 600; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: grid; gap: 4px; font: 600 .75rem var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+input { font: 600 1.25rem var(--num); font-variant-numeric: tabular-nums; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ret { color: var(--muted); font-size: .92rem; font-variant-numeric: tabular-nums; }
+.ret b { color: var(--ink); font-family: var(--num); }
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.totals div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; }
+.totals span { display: block; font: 600 .7rem var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.totals b { font: 600 1.05rem var(--num); font-variant-numeric: tabular-nums; }
+.round { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: .9rem; }
+.round button { font: 600 .9rem var(--body); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.round button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.round button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.help { color: var(--muted); font-size: .85rem; margin: 0; }
+</style>
+</head>
+<body>
+
+<main>
+  <div class="meta">
+    <span class="example" id="example" hidden>Exemple — ouvre le calculateur depuis une alerte</span>
+    <h1 id="title">Tirs cadrés PSV Eindhoven</h1>
+    <span id="match">PSV Eindhoven - SC Heerenveen</span>
+  </div>
+
+  <section class="verdict ok" id="verdict" aria-live="polite">
+    <span class="label">TRJ</span>
+    <span class="trj" id="trj">100,48 %</span>
+    <span class="state" id="state">Surebet</span>
+  </section>
+
+  <div id="cards"></div>
+
+  <div class="totals">
+    <div><span>Mise totale</span><b id="total">0,00 €</b></div>
+    <div><span>Retour min.</span><b id="back">0,00 €</b></div>
+    <div><span>Gain min.</span><b id="profit">0,00 €</b></div>
+  </div>
+
+  <div class="round" role="group" aria-label="Arrondi des mises calculées">
+    Arrondir :
+    <button type="button" data-step="0.01" aria-pressed="true">0,01 €</button>
+    <button type="button" data-step="0.5" aria-pressed="false">0,50 €</button>
+    <button type="button" data-step="1" aria-pressed="false">1 €</button>
+  </div>
+  <p class="help">Saisis la mise d'un côté : les autres se calculent pour un retour identique. Corrige une cote si elle a bougé : le TRJ se met à jour.</p>
+</main>
+
+<script>
+(function () {
+  // Lien d'alerte : #m=<match>&t=<pari>&s=<issue>~<site>~<cote>&s=…  (tout encodé en URL)
+  const fmt = (x, d = 2) => (isFinite(x) ? x : 0).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const parse = (v) => parseFloat(String(v).replace(",", ".").replace(/\s/g, ""));
+  const params = new URLSearchParams(location.hash.slice(1));
+  let sides = params.getAll("s").map((s) => s.split("~")).filter((p) => p.length === 3)
+    .map(([side, book, odds]) => ({ side, book, odds: parse(odds), stake: 0 }));
+  if (sides.length < 2) {
+    document.getElementById("example").hidden = false;
+    sides = [{ side: "+ 8,5", book: "Betclic", odds: 2.5, stake: 40 }, { side: "- 8,5", book: "PMU", odds: 1.68, stake: 0 }];
+  } else {
+    document.getElementById("title").textContent = params.get("t") || "Surebet";
+    document.getElementById("match").textContent = params.get("m") || "";
+    sides[0].stake = 100;
+  }
+  document.title = (params.get("t") || "Calculateur") + " — PropHawk";
+
+  let step = 0.01, anchor = 0;  // anchor : issue dont la mise a été saisie
+  const cards = document.getElementById("cards");
+  cards.style.display = "grid"; cards.style.gap = "10px";
+  sides.forEach((s, i) => {
+    const card = document.createElement("section");
+    card.className = "card";
+    card.innerHTML = `<header><span class="side"></span><span class="book"></span></header>
+      <div class="fields">
+        <label for="odds${i}">Cote<input id="odds${i}" inputmode="decimal" autocomplete="off"></label>
+        <label for="stake${i}">Mise (€)<input id="stake${i}" inputmode="decimal" autocomplete="off"></label>
+      </div>
+      <div class="ret">Retour si gagnant : <b id="ret${i}">0,00 €</b></div>`;
+    card.querySelector(".side").textContent = s.side;
+    card.querySelector(".book").textContent = s.book;
+    cards.appendChild(card);
+    const odds = card.querySelector(`#odds${i}`), stake = card.querySelector(`#stake${i}`);
+    odds.value = fmt(s.odds);
+    odds.addEventListener("input", () => { s.odds = parse(odds.value); compute(); });
+    stake.addEventListener("input", () => { anchor = i; s.stake = parse(stake.value) || 0; compute(true); });
+  });
+
+  function compute(typing) {
+    const valid = sides.every((s) => s.odds > 1);
+    const inv = valid ? sides.reduce((a, s) => a + 1 / s.odds, 0) : NaN;
+    const trj = 1 / inv;
+    const base = sides[anchor];
+    const target = base.stake * base.odds;  // retour visé, identique pour chaque issue
+    sides.forEach((s, i) => {
+      if (i !== anchor) s.stake = valid ? Math.round(target / s.odds / step) * step : 0;
+      const input = document.getElementById(`stake${i}`);
+      if (!(typing && i === anchor)) input.value = fmt(s.stake);
+      document.getElementById(`ret${i}`).textContent = fmt(s.stake * s.odds) + " €";
+    });
+    const total = sides.reduce((a, s) => a + s.stake, 0);
+    const back = Math.min(...sides.map((s) => s.stake * s.odds));
+    document.getElementById("total").textContent = fmt(total) + " €";
+    document.getElementById("back").textContent = fmt(back) + " €";
+    document.getElementById("profit").textContent = (back - total >= 0 ? "+" : "") + fmt(back - total) + " €";
+    const ok = valid && trj > 1;
+    const v = document.getElementById("verdict");
+    v.className = "verdict " + (ok ? "ok" : "ko");
+    document.getElementById("trj").textContent = valid ? fmt(trj * 100) + " %" : "—";
+    document.getElementById("state").textContent = !valid ? "Cote invalide" : ok ? "Surebet" : "Plus de surebet";
+  }
+
+  document.querySelectorAll(".round button").forEach((b) => b.addEventListener("click", () => {
+    step = parseFloat(b.dataset.step);
+    document.querySelectorAll(".round button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    compute();
+  }));
+  compute();
+})();
+</script>
+</body>
+</html>
