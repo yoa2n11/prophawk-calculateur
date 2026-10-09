@@ -158,11 +158,12 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     document.getElementById("total").textContent = fmt(total) + " €";
     document.getElementById("back").textContent = fmt(back) + " €";
     document.getElementById("profit").textContent = (back - total >= 0 ? "+" : "") + fmt(back - total) + " €";
-    const ok = valid && trj > 1;
+    const even = valid && Math.abs(trj - 1) < 0.00005;  // 100 % tout pile : ni gain ni perte
+    const ok = valid && (trj > 1 || even);
     const v = document.getElementById("verdict");
     v.className = "verdict " + (ok ? "ok" : "ko");
     document.getElementById("trj").textContent = valid ? fmt(trj * 100) + " %" : "—";
-    document.getElementById("state").textContent = !valid ? "Cote invalide" : ok ? "Surebet" : "Plus de surebet";
+    document.getElementById("state").textContent = !valid ? "Cote invalide" : even ? "Équilibre (0 %)" : ok ? "Surebet" : "Plus de surebet";
   }
 
   document.querySelectorAll(".round button").forEach((b) => b.addEventListener("click", () => {
