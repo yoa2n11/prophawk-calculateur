@@ -108,16 +108,26 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   const fmt = (x, d = 2) => (isFinite(x) ? x : 0).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
   const parse = (v) => parseFloat(String(v).replace(",", ".").replace(/\s/g, ""));
   const params = new URLSearchParams(location.hash.slice(1));
-  let sides = params.getAll("s").map((s) => s.split("~")).filter((p) => p.length === 3)
-    .map(([side, book, odds]) => ({ side, book, odds: parse(odds), stake: 0 }));
+  // Mode « couverture » (radar VM2) : s=<pari>~<site>~<cote>~<part de la mise>~<profil>. Plusieurs paris peuvent gagner
+  // ensemble : les mises gardent les proportions du radar et le retour min. est le pire des scénarios. Profil = une lettre
+  // par scénario : 1 gagné, 0 perdu, r remboursé, h moitié gagnée / moitié remboursée, l moitié perdue / moitié remboursée.
+  const WIN = { "1": [1, 0], "0": [0, 0], r: [0, 1], h: [0.5, 0.5], l: [0, 0.5] };
+  let sides = params.getAll("s").map((s) => s.split("~")).filter((p) => p.length === 3 || p.length === 5)
+    .map(([side, book, odds, weight, profile]) => ({ side, book, odds: parse(odds), stake: 0, weight: parse(weight), profile }));
+  const cover = sides.length >= 2 && sides.every((s) => s.weight > 0 && s.profile && s.profile.length === sides[0].profile.length
+    && [...s.profile].every((c) => c in WIN));
+  if (!cover) sides = sides.filter((s) => !s.profile);
   if (sides.length < 2) {
     document.getElementById("example").hidden = false;
     sides = [{ side: "+ 8,5", book: "Betclic", odds: 2.5, stake: 40 }, { side: "- 8,5", book: "PMU", odds: 1.68, stake: 0 }];
   } else {
     document.getElementById("title").textContent = params.get("t") || "Surebet";
     document.getElementById("match").textContent = params.get("m") || "";
-    sides[0].stake = 100;
+    sides[0].stake = cover ? 100 * sides[0].weight / sides.reduce((a, s) => a + s.weight, 0) : 100;
   }
+  if (cover) document.querySelector(".help").textContent = "Couverture : plusieurs paris peuvent gagner ensemble. "
+    + "Saisis la mise d'un pari : les autres gardent les proportions du radar. Retour min. = le pire des scores. "
+    + "Corrige une cote si elle a bougé : le TRJ se met à jour.";
   document.title = (params.get("t") || "Calculateur") + " — PropHawk";
 
   let step = 0.01, anchor = 0;  // anchor : issue dont la mise a été saisie
@@ -141,20 +151,26 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     stake.addEventListener("input", () => { anchor = i; s.stake = parse(stake.value) || 0; compute(true); });
   });
 
+  // retour de chaque scénario pour des mises données (mode couverture)
+  const worst = (stake) => Math.min(...[...sides[0].profile].map((_, k) => sides.reduce((a, s, i) => {
+    const [w, r] = WIN[s.profile[k]];
+    return a + stake(s, i) * (w * s.odds + r);
+  }, 0)));
+
   function compute(typing) {
     const valid = sides.every((s) => s.odds > 1);
     const inv = valid ? sides.reduce((a, s) => a + 1 / s.odds, 0) : NaN;
-    const trj = 1 / inv;
+    const trj = cover ? (valid ? worst((s) => s.weight) / sides.reduce((a, s) => a + s.weight, 0) : NaN) : 1 / inv;
     const base = sides[anchor];
     const target = base.stake * base.odds;  // retour visé, identique pour chaque issue
     sides.forEach((s, i) => {
-      if (i !== anchor) s.stake = valid ? Math.round(target / s.odds / step) * step : 0;
+      if (i !== anchor) s.stake = !valid ? 0 : Math.round((cover ? base.stake * s.weight / base.weight : target / s.odds) / step) * step;
       const input = document.getElementById(`stake${i}`);
       if (!(typing && i === anchor)) input.value = fmt(s.stake);
       document.getElementById(`ret${i}`).textContent = fmt(s.stake * s.odds) + " €";
     });
     const total = sides.reduce((a, s) => a + s.stake, 0);
-    const back = Math.min(...sides.map((s) => s.stake * s.odds));
+    const back = cover ? worst((s) => s.stake) : Math.min(...sides.map((s) => s.stake * s.odds));
     document.getElementById("total").textContent = fmt(total) + " €";
     document.getElementById("back").textContent = fmt(back) + " €";
     document.getElementById("profit").textContent = (back - total >= 0 ? "+" : "") + fmt(back - total) + " €";
