@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PropHawk — pari Winamax au ticket
 // @namespace    https://yoa2n11.github.io/prophawk-calculateur/
-// @version      1.0
+// @version      1.0.1
 // @description  Lien d'alerte PropHawk « …/paris-sportifs/match/<n°>?ph=<pari>-<issue> » : met la cote au ticket Winamax (ne valide rien).
 // @match        https://www.winamax.fr/paris-sportifs/match/*
 // @run-at       document-idle
@@ -25,7 +25,7 @@
       clearInterval(minuterie);
       window.navigateBetting("wam://betting?target=match-" + match[1] + "&c=" + ph);
     } else if (++essais > 60) {
-      clearInterval(minuterie);  // site pas chargé en 30 s : on laisse la page du match
+      clearInterval(minuterie); // site pas chargé en 30 s : on laisse la page du match
     }
   }, 500);
 })();
