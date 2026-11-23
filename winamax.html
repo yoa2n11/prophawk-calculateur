@@ -1,0 +1,51 @@
+<!doctype html>
+<!--
+  Page relais Winamax (PropHawk, 23/11/2026) : Telegram ne rend pas cliquable une adresse wam:// (appli Winamax).
+  Le bouton de l'alerte ouvre cette page, qui envoie vers wam://betting?target=match-<m>&b=<b>&o=<o> : l'appli
+  s'ouvre sur le match avec le pari au ticket. m = match, b = pari, o = issue (nombres seulement).
+  Sans l'appli (ou sur PC) : bouton de la page du match sur winamax.fr.
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Pari Winamax</title>
+<style>
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #15171a; --muted: #5f6670; --accent: #d6001c; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15171a; --fg: #f2f3f5; --muted: #a2a8b0; } }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+  main { width: 100%; max-width: 360px; padding: 24px 16px; text-align: center; box-sizing: border-box; }
+  a.bouton { display: block; margin: 16px 0 12px; padding: 14px; border-radius: 10px; background: var(--accent);
+             color: #fff; font-weight: 600; text-decoration: none; }
+  a.repli { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <p id="etat">Ouverture de l'appli Winamax…</p>
+  <a class="bouton" id="appli" href="#">Ouvrir le pari dans l'appli</a>
+  <a class="repli" id="site" rel="noreferrer noopener" href="https://www.winamax.fr/paris-sportifs">Voir le match sur winamax.fr</a>
+</main>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search), m = q.get("m"), b = q.get("b"), o = q.get("o");
+    var nombre = /^\d{1,15}$/;
+    if (!nombre.test(m || "") || !nombre.test(b || "") || !nombre.test(o || "")) {
+      document.getElementById("etat").textContent = "Lien incomplet.";
+      document.getElementById("appli").style.display = "none";
+      return;
+    }
+    var appli = "wam://betting?target=match-" + m + "&b=" + b + "&o=" + o;
+    document.getElementById("appli").href = appli;
+    document.getElementById("site").href = "https://www.winamax.fr/paris-sportifs/match/" + m;
+    location.href = appli;
+    setTimeout(function () {
+      document.getElementById("etat").textContent = "L'appli ne s'est pas ouverte ? Touchez le bouton, ou ouvrez le match sur le site.";
+    }, 1500);
+  })();
+</script>
+</body>
+</html>
