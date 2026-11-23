@@ -38,9 +38,16 @@
       document.getElementById("appli").style.display = "none";
       return;
     }
-    var appli = "wam://betting?target=match-" + m + "&b=" + b + "&o=" + o;
+    var chemin = "betting?target=match-" + m + "&b=" + b + "&o=" + o;
+    var site = "https://www.winamax.fr/paris-sportifs/match/" + m;
+    // Android : adresse intent:// (appli com.winamax.winajs, schéma wam), que Chrome ouvre même là où wam:// est
+    // ignoré ; sans l'appli, Chrome va sur la page du match. Ailleurs (iPhone, PC) : wam:// directement.
+    var appli = /Android/i.test(navigator.userAgent)
+      ? "intent://" + chemin + "#Intent;scheme=wam;package=com.winamax.winajs;S.browser_fallback_url="
+        + encodeURIComponent(site) + ";end"
+      : "wam://" + chemin;
     document.getElementById("appli").href = appli;
-    document.getElementById("site").href = "https://www.winamax.fr/paris-sportifs/match/" + m;
+    document.getElementById("site").href = site;
     location.href = appli;
     setTimeout(function () {
       document.getElementById("etat").textContent = "L'appli ne s'est pas ouverte ? Touchez le bouton, ou ouvrez le match sur le site.";
